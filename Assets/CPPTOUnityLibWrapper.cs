@@ -5,14 +5,15 @@ public static class CPPTOUnityLibWrapper
 {
 
     [DllImport("../x64/Release/Algorithms")]
-    public static extern int add_to_42(int valueToAdd);
-
+    public static extern System.IntPtr linear_create(System.IntPtr X, System.IntPtr Y, int nbPoints);
 
     [DllImport("../x64/Release/Algorithms")]
-    public static extern System.IntPtr linear_create();
+    public static extern void linear_train_classification(System.IntPtr datas);
 
+    /*
     [DllImport("../x64/Release/Algorithms")]
     public static extern System.IntPtr linear_remove(System.IntPtr valueToRemove);
+    */
 
 
     /*
