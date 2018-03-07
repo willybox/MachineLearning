@@ -15,6 +15,7 @@ public class SphereScript : MonoBehaviour {
     private Transform[] blueSpheres;
 
     private static int nbPoints;
+    private static int nbValues;
     private static double[] coordinates;
     private static double[] values;
 
@@ -23,24 +24,37 @@ public class SphereScript : MonoBehaviour {
     void Start()
     {
         nbPoints = 0;
+        nbValues = 0;
+
         int nbSpheres = redSpheres.Length + blueSpheres.Length;
 
         coordinates = new double[nbSpheres * 2];
         values = new double[nbSpheres];
 
+        
+
         getCoordinatesAndValues(redSpheres, "red");
         getCoordinatesAndValues(blueSpheres, "blue");
 
-        int totalSize = 4 + 3 * nbPoints;
+        Debug.Log(redSpheres[0].position.x);
+        Debug.Log(redSpheres[0].position.y);
+        Debug.Log(redSpheres[0].position.z);
+
 
         IntPtr resultPtr = CPPTOUnityLibWrapper.linear_create(2);
 
-        double[] result = new double[totalSize];
-        Marshal.Copy(resultPtr, result, 0, totalSize);
+        double[] result = new double[3];
+        Marshal.Copy(resultPtr, result, 0, 3);
 
         CPPTOUnityLibWrapper.linear_train_classification(result, coordinates, values, nbSpheres);
 
-        displayFunction(whiteSpheres, result[1], result[2], result[3]);
+        Debug.Log(result[0]);
+        Debug.Log(result[1]);
+        Debug.Log(result[2]);
+
+        displayFunction(whiteSpheres, result[0], result[1], result[2]);
+        displayFunction(redSpheres, result[0], result[1], result[2]);
+        displayFunction(blueSpheres, result[0], result[1], result[2]);
     }
 
     private void getCoordinatesAndValues(Transform[] spheres, string color)
@@ -52,15 +66,15 @@ public class SphereScript : MonoBehaviour {
 
             if (color == "blue")
             {
-                values[i] = -1;
+                values[nbValues] = -1;
             }
-
             else
             {
-                values[i] = 1;
+                values[nbValues] = 1;
             }
             
             nbPoints += 2;
+            nbValues += 1;
         }
     }
 
@@ -68,9 +82,13 @@ public class SphereScript : MonoBehaviour {
     {
         for (int i = 0; i < spheres.Length; i++)
         {
-            if ((a * spheres[i].position.x) + (b * spheres[i].position.z) + c > 0)
+            if ((b * spheres[i].position.x) + (c * spheres[i].position.z) + a > 0)
             {
-                spheres[i].position += Vector3.up * 2f;
+                spheres[i].position += Vector3.up * 1f;
+            }
+            else
+            {
+                spheres[i].position += Vector3.down * 1f;
             }
         }
     }
