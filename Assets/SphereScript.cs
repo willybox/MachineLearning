@@ -18,6 +18,8 @@ public class SphereScript : MonoBehaviour {
     private static double[] coordinates;
     private static double[] values;
 
+    int nbInputs = 3;
+
 
     // Use this for initialization
     void Start()
@@ -31,16 +33,14 @@ public class SphereScript : MonoBehaviour {
         getCoordinatesAndValues(redSpheres, "red");
         getCoordinatesAndValues(blueSpheres, "blue");
 
-        int totalSize = 4 + 3 * nbPoints;
+        IntPtr resultPtr = CPPTOUnityLibWrapper.linear_create(nbInputs);
 
-        IntPtr resultPtr = CPPTOUnityLibWrapper.linear_create(2);
-
-        double[] result = new double[totalSize];
-        Marshal.Copy(resultPtr, result, 0, totalSize);
+        double[] result = new double[nbInputs];
+        Marshal.Copy(resultPtr, result, 0, nbInputs);
 
         CPPTOUnityLibWrapper.linear_train_classification(result, coordinates, values, nbSpheres);
 
-        displayFunction(whiteSpheres, result[1], result[2], result[3]);
+        displayFunction(whiteSpheres, result[0], result[1], result[2]);
     }
 
     private void getCoordinatesAndValues(Transform[] spheres, string color)
@@ -66,6 +66,10 @@ public class SphereScript : MonoBehaviour {
 
     private void displayFunction(Transform[] spheres, double a, double b, double c)
     {
+        Debug.Log(a);
+        Debug.Log(b);
+        Debug.Log(c);
+
         for (int i = 0; i < spheres.Length; i++)
         {
             if ((a * spheres[i].position.x) + (b * spheres[i].position.z) + c > 0)
