@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
+
 public class SphereScript : MonoBehaviour {
 
     [SerializeField]
@@ -32,17 +33,12 @@ public class SphereScript : MonoBehaviour {
 
         int totalSize = 4 + 3 * nbPoints;
 
-        IntPtr resultPtr = CPPTOUnityLibWrapper.linear_create(coordinates, values, nbSpheres);
+        IntPtr resultPtr = CPPTOUnityLibWrapper.linear_create(2);
 
         double[] result = new double[totalSize];
         Marshal.Copy(resultPtr, result, 0, totalSize);
-        Debug.Log(result[0]);
-        Debug.Log(result[1]);
-        Debug.Log(result[2]);
-        Debug.Log(result[3]);
-        Debug.Log(result[4]);
 
-        CPPTOUnityLibWrapper.linear_train_classification(result);
+        CPPTOUnityLibWrapper.linear_train_classification(result, coordinates, values, nbSpheres);
 
         displayFunction(whiteSpheres, result[1], result[2], result[3]);
     }
@@ -74,7 +70,7 @@ public class SphereScript : MonoBehaviour {
         {
             if ((a * spheres[i].position.x) + (b * spheres[i].position.z) + c > 0)
             {
-                spheres[i].position.Set(spheres[i].position.x, spheres[i].position.y + 2, spheres[i].position.z);
+                spheres[i].position += Vector3.up * 2f;
             }
         }
     }
