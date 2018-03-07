@@ -1,14 +1,15 @@
 ﻿
+using System;
 using System.Runtime.InteropServices;
 
 public static class CPPTOUnityLibWrapper
 {
 
-    [DllImport("../x64/Release/Algorithms")]
-    public static extern System.IntPtr linear_create(System.IntPtr X, System.IntPtr Y, int nbPoints);
+    [DllImport("C:\\Users\\Samuel BIJOU\\Desktop\\ESGI\\Matières\\Machine Learning\\MachineLearning\\x64\\Release\\Algorithms.dll", CallingConvention = CallingConvention.Cdecl)]
+    public static extern IntPtr linear_create(double[] X, double[] Y, int nbPoints);
 
-    [DllImport("../x64/Release/Algorithms")]
-    public static extern void linear_train_classification(System.IntPtr datas);
+    [DllImport("C:\\Users\\Samuel BIJOU\\Desktop\\ESGI\\Matières\\Machine Learning\\MachineLearning\\x64\\Release\\Algorithms.dll", CallingConvention = CallingConvention.Cdecl)]
+    public static extern void linear_train_classification(double[] datas);
 
     /*
     [DllImport("../x64/Release/Algorithms")]
