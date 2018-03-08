@@ -77,25 +77,6 @@ public class LinearScript : MonoBehaviour {
         GC.Collect();
     }
 
-    private string inputX1 = "";
-    private string inputX2 = "";
-
-    void OnGUI()
-    {
-        GUI.Label(new Rect(0, 0, 150, 20), "X1 (ou X) :");
-        inputX1 = GUI.TextField(new Rect(10, 20, 150, 20), inputX1);
-
-        GUI.Label(new Rect(0, 40, 150, 20), "X2 (ou Y) :");
-        inputX2 = GUI.TextField(new Rect(10, 60, 150, 20), inputX2);
-
-        GUI.enabled = true;
-
-        if (GUI.Button(new Rect(0, 100, 150, 20), "Calculer"))
-        {
-            useResult(Convert.ToDouble(inputX1), Convert.ToDouble(inputX2));
-        }
-    }
-
     private double[] initializeLinearVariables(Algorithm linearAlgorithm)
     {
         getCoordinatesAndValues(redSpheres, "red", linearAlgorithm);
@@ -166,13 +147,64 @@ public class LinearScript : MonoBehaviour {
             spheres[i].position = new Vector3(x, y, z);
         }
     }
+
+
+    private List<Transform> addedSpheres = new List<Transform>();
+
+    private string inputX1 = "";
+    private string inputX2 = "";
+
+    void OnGUI()
+    {
+        GUI.Label(new Rect(10, 0, 150, 20), "X1 (ou X) :");
+        inputX1 = GUI.TextField(new Rect(20, 20, 150, 20), inputX1);
+
+        GUI.Label(new Rect(10, 40, 150, 20), "X2 (ou Y) :");
+        inputX2 = GUI.TextField(new Rect(20, 60, 150, 20), inputX2);
+
+        GUI.enabled = true;
+
+        if (GUI.Button(new Rect(60, 90, 60, 20), "Calculer"))
+        {
+            if (!string.IsNullOrEmpty(inputX1) && !string.IsNullOrEmpty(inputX2))
+            {
+                useResult(Convert.ToDouble(inputX1), Convert.ToDouble(inputX2));
+            }
+
+            else
+            {
+                Debug.Log("Les valeurs doivent etre des nombres !");
+            }
+        }
+
+        if (GUI.Button(new Rect(200, 20, 240, 20), "Ajouter sphere aleatoire"))
+        {
+            addRandomSphere();
+        }
+
+        if (GUI.Button(new Rect(200, 45, 240, 20), "Supprimer derniere sphere ajoutee"))
+        {
+            removeLastAddedSphere();
+        }
+
+        if (GUI.Button(new Rect(200, 65, 240, 20), "Supprimer toutes les spheres ajoutees"))
+        {
+            removeAllAddedSphere();
+        }
+    }
+
     private void useResult(double x1, double x2)
     {
         double value = calculateValue(x1, x2, result[0], result[1], result[2]);
 
         Vector3 point = new Vector3();
-        point.x = (float) x1;
-        point.z = (float) x2;
+        point.x = (float)x1;
+        point.z = (float)x2;
+
+        Debug.Log("x = " + point.x);
+        Debug.Log("z = " + point.z);
+
+        Transform newSphere;
 
         switch (linearAlgorithm)
         {
@@ -181,20 +213,38 @@ public class LinearScript : MonoBehaviour {
                 if (value > 0)
                 {
                     point.y = redSpheres[0].position.y;
-                    Instantiate(redSpheres[0], point, new Quaternion());
+
+                    newSphere = Instantiate(redSpheres[0], point, new Quaternion());
+                    newSphere.name = "Sphere ajoutee " + (addedSpheres.Count + 1) + " (rouge)";
+
+                    addedSpheres.Add(newSphere);
+
+                    Debug.Log("color = red");
                 }
 
                 else if (value < 0)
                 {
                     point.y = blueSpheres[0].position.y;
-                    Instantiate(blueSpheres[0], point, new Quaternion());
+
+                    newSphere = Instantiate(blueSpheres[0], point, new Quaternion());
+                    newSphere.name = "Sphere ajoutee " + (addedSpheres.Count + 1) + " (bleue)";
+
+                    addedSpheres.Add(newSphere);
+
+                    Debug.Log("color = blue");
                 }
 
                 else
                 {
                     point.y = blueSpheres[0].position.y;
-                    Instantiate(whiteSpheres[0], point, new Quaternion())
-                        .GetComponent<MeshRenderer>().material = Resources.Load("Colors/Jaune", typeof(Material)) as Material;
+
+                    newSphere = Instantiate(whiteSpheres[0], point, new Quaternion());
+                    newSphere.GetComponent<MeshRenderer>().material = Resources.Load("Colors/Jaune", typeof(Material)) as Material;
+                    newSphere.name = "Sphere ajoutee " + (addedSpheres.Count + 1) + " (milieu)";
+
+                    addedSpheres.Add(newSphere);
+
+                    Debug.Log("color = yellow");
                 }
 
                 break;
@@ -202,11 +252,45 @@ public class LinearScript : MonoBehaviour {
             case Algorithm.Regression:
             case Algorithm.NoMatrixLibraryRegression:
 
-                point.y = (float) value;
-                Instantiate(whiteSpheres[0], point, new Quaternion())
-                    .GetComponent<MeshRenderer>().material = Resources.Load("Colors/Jaune", typeof(Material)) as Material;
+                point.y = (float)value;
+
+                newSphere = Instantiate(whiteSpheres[0], point, new Quaternion());
+                newSphere.GetComponent<MeshRenderer>().material = Resources.Load("Colors/Jaune", typeof(Material)) as Material;
+                newSphere.name = "Sphere ajoutee " + (addedSpheres.Count + 1);
+
+                addedSpheres.Add(newSphere);
+
+                Debug.Log("y = " + point.y);
 
                 break;
+        }
+    }
+
+    private void addRandomSphere()
+    {
+        System.Random randomer = new System.Random();
+
+        double randomX1 = randomer.NextDouble() + randomer.Next(-6, 11); // le plateau n'est pas pile au milieu
+        double randomX2 = randomer.NextDouble() + randomer.Next(-9, 8); // le plateau n'est pas pile au milieu
+
+        useResult(randomX1, randomX2);
+    }
+
+    private void removeLastAddedSphere()
+    {
+        if (addedSpheres.Count > 0)
+        {
+            Destroy(addedSpheres[addedSpheres.Count - 1].gameObject);
+            addedSpheres.RemoveAt(addedSpheres.Count - 1);
+        }
+    }
+
+    private void removeAllAddedSphere()
+    {
+        for (int i = (addedSpheres.Count - 1); i >= 0 ; i--)
+        {
+            Destroy(addedSpheres[i].gameObject);
+            addedSpheres.RemoveAt(i);
         }
     }
 
