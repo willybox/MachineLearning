@@ -17,10 +17,10 @@ public static class CPPTOUnityLibWrapper
     public static extern void linear_train_classification(double[] coefficients, double[] coordinates, double[] values, int nbPoints);
     
     [DllImport("Algorithms")]
-    public static extern void linear_train_multiple_regression(double[] coefficients, double[] coordinates, double[] values, int nbPoints);
+    public static extern void linear_train_regression(double[] coefficients, double[] coordinates, double[] values, int nbPoints);
 
     [DllImport("Algorithms")]
-    public static extern void linear_train_regression(double[] coefficients, double[] coordinates, double[] values, int nbPoints);
+    public static extern void linear_train_no_matrix_library_regression(double[] coefficients, double[] coordinates, double[] values, int nbPoints);
 
 
     /*
