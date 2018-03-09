@@ -43,6 +43,7 @@ public class LinearScript : MonoBehaviour
 
     private string _inputX1 = "";
     private string _inputX2 = "";
+    private string _inputX3 = "";
 
 
     // Lance le script
@@ -171,16 +172,19 @@ public class LinearScript : MonoBehaviour
         GUI.Label(new Rect(10, 0, 150, 20), "X1 (ou X) :");
         _inputX1 = GUI.TextField(new Rect(20, 20, 150, 20), _inputX1);
 
-        GUI.Label(new Rect(10, 40, 150, 20), "X2 (ou Y) :");
+        GUI.Label(new Rect(10, 40, 150, 20), "X2 (ou Z) :");
         _inputX2 = GUI.TextField(new Rect(20, 60, 150, 20), _inputX2);
+
+        GUI.Label(new Rect(10, 80, 150, 20), "X3 (ou Y) :");
+        _inputX3 = GUI.TextField(new Rect(20, 100, 150, 20), _inputX3);
 
         GUI.enabled = true;
 
-        if (GUI.Button(new Rect(60, 115, 60, 20), "Calculer"))
+        if (GUI.Button(new Rect(10, 130, 80, 20), "Ajouter Y"))
         {
-            if (!string.IsNullOrEmpty(_inputX1) && !string.IsNullOrEmpty(_inputX2))
+            if (!string.IsNullOrEmpty(_inputX1) && !string.IsNullOrEmpty(_inputX2) && !string.IsNullOrEmpty(_inputX3))
             {
-                UseResult(Convert.ToDouble(_inputX1), Convert.ToDouble(_inputX2));
+                AddSphere(Convert.ToDouble(_inputX1), Convert.ToDouble(_inputX2), Convert.ToDouble(_inputX3), false);
             }
 
             else
@@ -190,15 +194,29 @@ public class LinearScript : MonoBehaviour
             }
         }
 
-        if (GUI.Button(new Rect(200, 20, 240, 20), "Ajouter sphere aleatoire")) AddRandomSphere();
+        if (GUI.Button(new Rect(100, 130, 80, 20), "Calculer Y"))
+        {
+            if (!string.IsNullOrEmpty(_inputX1) && !string.IsNullOrEmpty(_inputX2))
+            {
+                AddSphere(Convert.ToDouble(_inputX1), Convert.ToDouble(_inputX2), 0, true);
+            }
 
-        if (GUI.Button(new Rect(200, 40, 240, 20), "Ajouter sphere calculée")) AddCalculedSphere();
+            else
+            {
+                Debug.Log("Les valeurs doivent etre des nombres !");
+                Debug.Log("\n");
+            }
+        }
+
+        if (GUI.Button(new Rect(200, 20, 240, 20), "Ajouter sphere aleatoire")) CreateRandomSphere(false);
+
+        if (GUI.Button(new Rect(200, 40, 240, 20), "Ajouter sphere calculée")) CreateRandomSphere(true);
 
         if (GUI.Button(new Rect(200, 65, 240, 20), "Supprimer derniere sphere ajoutee")) RemoveLastAddedSphere();
 
         if (GUI.Button(new Rect(200, 85, 240, 20), "Supprimer toutes les spheres ajoutees")) RemoveAllAddedSphere();
 
-        if (GUI.Button(new Rect(200, 115, 80, 20), "Recalculer"))
+        if (GUI.Button(new Rect(270, 130, 80, 20), "Recalculer"))
         {
             RecalculateWithAddedSpheres();
         }
@@ -301,14 +319,13 @@ public class LinearScript : MonoBehaviour
     }
 
     // Utilise les coefficients pour calculer le résultat de la fonction sur les coordonnées d'entrée selon l'algorithme utilisé
-    private void UseResult(double x1, double x2)
+    private void AddSphere(double x1, double x2, double x3, bool calculate)
     {
-        double value = CalculateValue(x1, x2, _resultedCoefficients);
-
         Vector3 point = new Vector3
         {
             x = (float) x1,
-            z = (float) x2
+            z = (float) x2,
+            y = (float) x3
         };
 
         Debug.Log("x = " + point.x);
@@ -320,42 +337,77 @@ public class LinearScript : MonoBehaviour
         {
             case Algorithm.Classification:
 
-                if (value > 0)
+                if (calculate)
                 {
-                    point.y = redSpheres[0].position.y;
+                    double value = CalculateValue(x1, x2, _resultedCoefficients);
 
-                    newSphere = Instantiate(redSpheres[0], point, new Quaternion());
-                    newSphere.name = "Sphere ajoutee " + (_addedSpheres.Count + 1) + " (rouge)";
+                    if (value > 0)
+                    {
+                        point.y = redSpheres[0].position.y;
 
-                    _addedSpheres.Add(newSphere);
+                        newSphere = Instantiate(redSpheres[0], point, new Quaternion());
+                        newSphere.name = "Sphere calculee ajoutee " + (_addedSpheres.Count + 1) + " (rouge)";
 
-                    Debug.Log("color = red");
+                        _addedSpheres.Add(newSphere);
+
+                        Debug.Log("color = Rouge");
+                    }
+
+                    else if (value < 0)
+                    {
+                        point.y = blueSpheres[0].position.y;
+
+                        newSphere = Instantiate(blueSpheres[0], point, new Quaternion());
+                        newSphere.name = "Sphere calculee ajoutee " + (_addedSpheres.Count + 1) + " (bleu)";
+
+                        _addedSpheres.Add(newSphere);
+
+                        Debug.Log("color = Bleu");
+                    }
+
+                    // Peu de chances que ça arrive
+                    else if (value == 0)
+                    {
+                        point.y = 0;
+
+                        newSphere = Instantiate(whiteSpheres[0], point, new Quaternion());
+                        newSphere.GetComponent<MeshRenderer>().material =
+                            Resources.Load("Colors/Jaune", typeof(Material)) as Material;
+                        newSphere.name = "Sphere calculee ajoutee " + (_addedSpheres.Count + 1) + " (milieu)";
+
+                        _addedSpheres.Add(newSphere);
+
+                        Debug.Log("color = Jaune");
+                    }
                 }
 
-                else if (value < 0)
-                {
-                    point.y = blueSpheres[0].position.y;
-
-                    newSphere = Instantiate(blueSpheres[0], point, new Quaternion());
-                    newSphere.name = "Sphere ajoutee " + (_addedSpheres.Count + 1) + " (bleue)";
-
-                    _addedSpheres.Add(newSphere);
-
-                    Debug.Log("color = blue");
-                }
-
+                // Sphère totalement aléatoire (pas de calcul de y) donc couleur aléatoire
                 else
                 {
                     point.y = 0;
 
+                    string color;
+                    Random randomer = new Random();
+                    int randomNumber = randomer.Next(0, 2);
+
+                    if (randomNumber == 1)
+                    {
+                        color = "Rouge";
+                    }
+
+                    else
+                    {
+                        color = "Bleu";
+                    }
+
                     newSphere = Instantiate(whiteSpheres[0], point, new Quaternion());
                     newSphere.GetComponent<MeshRenderer>().material =
-                        Resources.Load("Colors/Jaune", typeof(Material)) as Material;
-                    newSphere.name = "Sphere ajoutee " + (_addedSpheres.Count + 1) + " (milieu)";
+                        Resources.Load("Colors/" + color, typeof(Material)) as Material;
+                    newSphere.name = "Sphere non calculee ajoutee " + (_addedSpheres.Count + 1) + " (" + color.ToLower() + ")";
 
                     _addedSpheres.Add(newSphere);
 
-                    Debug.Log("color = yellow");
+                    Debug.Log("color = " + color);
                 }
 
                 break;
@@ -363,12 +415,18 @@ public class LinearScript : MonoBehaviour
             case Algorithm.Regression:
             case Algorithm.NoMatrixLibraryRegression:
 
-                point.y = (float) value;
+                string sphereDefinition = "non calculee";
+
+                if (calculate)
+                {
+                    point.y = (float) CalculateValue(x1, x2, _resultedCoefficients);
+                    sphereDefinition = "calculee";
+                }
 
                 newSphere = Instantiate(whiteSpheres[0], point, new Quaternion());
                 newSphere.GetComponent<MeshRenderer>().material =
                     Resources.Load("Colors/Jaune", typeof(Material)) as Material;
-                newSphere.name = "Sphere ajoutee " + (_addedSpheres.Count + 1);
+                newSphere.name = "Sphere " + sphereDefinition + " ajoutee " + (_addedSpheres.Count + 1);
 
                 _addedSpheres.Add(newSphere);
 
@@ -383,21 +441,16 @@ public class LinearScript : MonoBehaviour
         Debug.Log("\n");
     }
 
-    // Ajoute une sphère aléatoirement
-    private void AddRandomSphere()
-    {
-        Debug.Log("En développement");
-    }
-
-    // Ajoute une sphère aléatoirement
-    private void AddCalculedSphere()
+    // Ajoute une boule avec une position aléaoire et calcule sa valeur si demandé (la coordonnée y)
+    private void CreateRandomSphere(bool calculate)
     {
         Random randomer = new Random();
 
         double randomX1 = randomer.NextDouble() + randomer.Next(-10, 10);
         double randomX2 = randomer.NextDouble() + randomer.Next(-10, 10);
+        double randomX3 = randomer.NextDouble() + randomer.Next(-10, 10);
 
-        UseResult(randomX1, randomX2);
+        AddSphere(randomX1, randomX2, randomX3, calculate);
     }
 
     // Supprime la dernière sphère ajoutée
