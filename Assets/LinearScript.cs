@@ -1,212 +1,209 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using Random = System.Random;
 
 
-public class LinearScript : MonoBehaviour {
+public class LinearScript : MonoBehaviour
+{
+    [SerializeField] private Transform[] whiteSpheres;
 
-    [SerializeField]
-    private Transform[] whiteSpheres;
-    [SerializeField]
-    private Transform[] redSpheres;
-    [SerializeField]
-    private Transform[] blueSpheres;
+    [SerializeField] private Transform[] redSpheres;
 
-    private static uint nbPoints;
-    private static uint nbValues;
-    private static double[] coordinates;
-    private static double[] values;
-
-    int nbInputs = 3;
-
-    private double[] result;
+    [SerializeField] private Transform[] blueSpheres;
 
 
-    public enum Algorithm { Classification, Regression, NoMatrixLibraryRegression };
-
-    public Algorithm linearAlgorithm = Algorithm.Classification;
-
-
-    // Use this for initialization
-    void Start()
+    public enum Algorithm
     {
-        nbPoints = 0;
-        nbValues = 0;
+        Classification,
+        Regression,
+        NoMatrixLibraryRegression
+    }
 
-        int nbSpheres = redSpheres.Length + blueSpheres.Length;
+    public Algorithm LinearAlgorithm = Algorithm.Classification;
 
-        coordinates = new double[nbSpheres * 2];
-        values = new double[nbSpheres];
 
-        result = new double[3];
+    // Variables des tailles
+    private static uint _nbPoints;
+    private static int spheresAddedCounter = 0;
+    private const uint NbInputs = 2;
+    private const uint NbInputWithExpedient = NbInputs + 1; // nbInputs + le biais
 
-        switch (linearAlgorithm)
+    // Variables des données
+    private static double[] _coordinates;
+    private static double[] _values;
+
+    // Variables des coefficients)
+    private double[] _resultedCoefficients;
+
+
+    // Variables du menu
+    private readonly List<Transform> _addedSpheres = new List<Transform>();
+
+    private string _inputX1 = "";
+    private string _inputX2 = "";
+
+
+    // Lance le script
+    private void Start()
+    {
+        _nbPoints = (uint) (redSpheres.Length + blueSpheres.Length);
+
+        _coordinates = new double[_nbPoints * NbInputs];
+        _values = new double[_nbPoints];
+
+        _resultedCoefficients = InitializeLinearVariables();
+
+        switch (LinearAlgorithm)
         {
             case Algorithm.Classification:
-                result = initializeLinearVariables(Algorithm.Classification);
+                GetCoordinatesAndValues(redSpheres, "red", Algorithm.Classification);
+                GetCoordinatesAndValues(blueSpheres, "blue", Algorithm.Classification);
 
-                CPPTOUnityLibWrapper.linear_train_classification(result, coordinates, values, nbSpheres);
+                CPPTOUnityLibWrapper.linear_train_classification(_resultedCoefficients, _coordinates, _values, _nbPoints, NbInputs);
 
-                displayLinearClassification(whiteSpheres, result[0], result[1], result[2]);
-                displayLinearClassification(redSpheres, result[0], result[1], result[2]);
-                displayLinearClassification(blueSpheres, result[0], result[1], result[2]);
+                DisplayLinearClassification(whiteSpheres, _resultedCoefficients);
+                DisplayLinearClassification(redSpheres, _resultedCoefficients);
+                DisplayLinearClassification(blueSpheres, _resultedCoefficients);
 
                 break;
 
             case Algorithm.Regression:
-                result = initializeLinearVariables(Algorithm.Regression);
+                GetCoordinatesAndValues(redSpheres, "red", Algorithm.Regression);
+                GetCoordinatesAndValues(blueSpheres, "blue", Algorithm.Regression);
 
-                CPPTOUnityLibWrapper.linear_train_regression(result, coordinates, values, nbSpheres);
+                CPPTOUnityLibWrapper.linear_train_regression(_resultedCoefficients, _coordinates, _values, _nbPoints, NbInputs);
 
-                displayLinearRegression(whiteSpheres, result[0], result[1], result[2]);
+                DisplayLinearRegression(whiteSpheres, _resultedCoefficients);
 
                 break;
 
             case Algorithm.NoMatrixLibraryRegression:
-                result = initializeLinearVariables(Algorithm.NoMatrixLibraryRegression);
+                GetCoordinatesAndValues(redSpheres, "red", Algorithm.NoMatrixLibraryRegression);
+                GetCoordinatesAndValues(blueSpheres, "blue", Algorithm.NoMatrixLibraryRegression);
 
-                CPPTOUnityLibWrapper.linear_train_no_matrix_library_regression(result, coordinates, values, nbSpheres);
+                CPPTOUnityLibWrapper.linear_train_no_matrix_library_regression(_resultedCoefficients, _coordinates, _values,
+                    _nbPoints);
 
-                displayLinearRegression(whiteSpheres, result[0], result[1], result[2]);
+                DisplayLinearRegression(whiteSpheres, _resultedCoefficients);
 
                 break;
+
+            default:
+                throw new ArgumentOutOfRangeException();
         }
 
         GC.Collect();
     }
 
-    private double[] initializeLinearVariables(Algorithm linearAlgorithm)
+    // Récupère les données et initialise les coefficients
+    private double[] InitializeLinearVariables()
     {
-        getCoordinatesAndValues(redSpheres, "red", linearAlgorithm);
-        getCoordinatesAndValues(blueSpheres, "blue", linearAlgorithm);
+        IntPtr resultPtr = CPPTOUnityLibWrapper.linear_create(NbInputWithExpedient);
 
-        IntPtr resultPtr = CPPTOUnityLibWrapper.linear_create(nbInputs);
-
-        double[] result = new double[nbInputs];
-        Marshal.Copy(resultPtr, result, 0, nbInputs);
+        double[] result = new double[NbInputWithExpedient];
+        Marshal.Copy(resultPtr, result, 0, (int)NbInputWithExpedient);
 
         return result;
     }
 
-    private void getCoordinatesAndValues(Transform[] spheres, string color, Algorithm linearAlgorithm)
+    // Récupère les coordonnées des sphères
+    private static void GetCoordinatesAndValues(Transform[] spheres, string color, Algorithm linearAlgorithm)
     {
-        for (uint i = 0; i < spheres.Length; i++)
+        for (int i = 0; i < spheres.Length; i++)
         {
-            coordinates[nbPoints] = spheres[i].position.x;
-            coordinates[nbPoints + 1] = spheres[i].position.z;
+            _coordinates[spheresAddedCounter * 2] = spheres[i].position.x;
+            _coordinates[spheresAddedCounter * 2 + 1] = spheres[i].position.z;
 
             if (linearAlgorithm == Algorithm.Classification)
-            {
                 if (color == "blue")
-                {
-                    values[nbValues] = -1;
-                }
+                    _values[spheresAddedCounter] = -1;
 
                 else
-                {
-                    values[nbValues] = 1;
-                }
-            }
+                    _values[spheresAddedCounter] = 1;
+
+            else if (linearAlgorithm == Algorithm.Regression || linearAlgorithm == Algorithm.NoMatrixLibraryRegression)
+                _values[spheresAddedCounter] = spheres[i].position.y;
 
             else
-            {
-                values[nbValues] = spheres[i].position.y;
-            }
-            
-            nbPoints += 2;
-            nbValues += 1;
+                Debug.Log("Algorithme non reconnu");
+
+            spheresAddedCounter++;
         }
     }
 
-    private void displayLinearClassification(Transform[] spheres, double a, double b, double c)
+    // Affiche la fonction de classification
+    private static void DisplayLinearClassification(Transform[] spheres, double[] coefficients)
     {
-        for (uint i = 0; i < spheres.Length; i++)
+        foreach (Transform s in spheres)
         {
-            if ((a * spheres[i].position.x) + (b * spheres[i].position.z) + c > 0)
-            {
-                spheres[i].position += Vector3.up * 1f;
-            }
+            if (coefficients[0] * s.position.x + coefficients[1] * s.position.z + coefficients[2] > 0)
+                s.position += Vector3.up * 1f;
 
             else
-            {
-                spheres[i].position += Vector3.down * 1f;
-            }
+                s.position += Vector3.down * 1f;
         }
     }
 
-    private void displayLinearRegression(Transform[] spheres, double a, double b, double c)
+    // Affiche la fonction de régression
+    private static void DisplayLinearRegression(Transform[] spheres, double[] coefficients)
     {
-        for (uint i = 0; i < spheres.Length; i++)
+        foreach (Transform s in spheres)
         {
-            float x = spheres[i].position.x;
-            float z = spheres[i].position.z;
-            float y = (float)((a * spheres[i].position.x) + (b * spheres[i].position.z) + c);
+            float y = (float) (coefficients[0] * s.position.x + coefficients[1] * s.position.z + coefficients[2]);
 
-            spheres[i].position = new Vector3(x, y, z);
+            s.position = new Vector3(s.position.x, y, s.position.z);
         }
     }
 
-
-    private List<Transform> addedSpheres = new List<Transform>();
-
-    private string inputX1 = "";
-    private string inputX2 = "";
-
-    void OnGUI()
+    // Affiche le menu de jeu
+    private void OnGUI()
     {
         GUI.Label(new Rect(10, 0, 150, 20), "X1 (ou X) :");
-        inputX1 = GUI.TextField(new Rect(20, 20, 150, 20), inputX1);
+        _inputX1 = GUI.TextField(new Rect(20, 20, 150, 20), _inputX1);
 
         GUI.Label(new Rect(10, 40, 150, 20), "X2 (ou Y) :");
-        inputX2 = GUI.TextField(new Rect(20, 60, 150, 20), inputX2);
+        _inputX2 = GUI.TextField(new Rect(20, 60, 150, 20), _inputX2);
 
         GUI.enabled = true;
 
         if (GUI.Button(new Rect(60, 90, 60, 20), "Calculer"))
-        {
-            if (!string.IsNullOrEmpty(inputX1) && !string.IsNullOrEmpty(inputX2))
+            if (!string.IsNullOrEmpty(_inputX1) && !string.IsNullOrEmpty(_inputX2))
             {
-                useResult(Convert.ToDouble(inputX1), Convert.ToDouble(inputX2));
+                UseResult(Convert.ToDouble(_inputX1), Convert.ToDouble(_inputX2));
             }
 
             else
             {
                 Debug.Log("Les valeurs doivent etre des nombres !");
+                Debug.Log("\n");
             }
-        }
 
-        if (GUI.Button(new Rect(200, 20, 240, 20), "Ajouter sphere aleatoire"))
-        {
-            addRandomSphere();
-        }
+        if (GUI.Button(new Rect(200, 20, 240, 20), "Ajouter sphere aleatoire")) AddRandomSphere();
 
-        if (GUI.Button(new Rect(200, 45, 240, 20), "Supprimer derniere sphere ajoutee"))
-        {
-            removeLastAddedSphere();
-        }
+        if (GUI.Button(new Rect(200, 45, 240, 20), "Supprimer derniere sphere ajoutee")) RemoveLastAddedSphere();
 
-        if (GUI.Button(new Rect(200, 65, 240, 20), "Supprimer toutes les spheres ajoutees"))
-        {
-            removeAllAddedSphere();
-        }
+        if (GUI.Button(new Rect(200, 65, 240, 20), "Supprimer toutes les spheres ajoutees")) RemoveAllAddedSphere();
     }
 
-    private void useResult(double x1, double x2)
+    // Utilise les coefficients pour calculer le résultat de la fonction sur les coordonnées d'entrée selon l'algorithme utilisé
+    private void UseResult(double x1, double x2)
     {
-        double value = calculateValue(x1, x2, result[0], result[1], result[2]);
+        double value = CalculateValue(x1, x2, _resultedCoefficients);
 
-        Vector3 point = new Vector3();
-        point.x = (float)x1;
-        point.z = (float)x2;
+        Vector3 point = new Vector3
+        {
+            x = (float) x1,
+            z = (float) x2
+        };
 
         Debug.Log("x = " + point.x);
         Debug.Log("z = " + point.z);
 
         Transform newSphere;
 
-        switch (linearAlgorithm)
+        switch (LinearAlgorithm)
         {
             case Algorithm.Classification:
 
@@ -215,9 +212,9 @@ public class LinearScript : MonoBehaviour {
                     point.y = redSpheres[0].position.y;
 
                     newSphere = Instantiate(redSpheres[0], point, new Quaternion());
-                    newSphere.name = "Sphere ajoutee " + (addedSpheres.Count + 1) + " (rouge)";
+                    newSphere.name = "Sphere ajoutee " + (_addedSpheres.Count + 1) + " (rouge)";
 
-                    addedSpheres.Add(newSphere);
+                    _addedSpheres.Add(newSphere);
 
                     Debug.Log("color = red");
                 }
@@ -227,22 +224,23 @@ public class LinearScript : MonoBehaviour {
                     point.y = blueSpheres[0].position.y;
 
                     newSphere = Instantiate(blueSpheres[0], point, new Quaternion());
-                    newSphere.name = "Sphere ajoutee " + (addedSpheres.Count + 1) + " (bleue)";
+                    newSphere.name = "Sphere ajoutee " + (_addedSpheres.Count + 1) + " (bleue)";
 
-                    addedSpheres.Add(newSphere);
+                    _addedSpheres.Add(newSphere);
 
                     Debug.Log("color = blue");
                 }
 
                 else
                 {
-                    point.y = blueSpheres[0].position.y;
+                    point.y = 0;
 
                     newSphere = Instantiate(whiteSpheres[0], point, new Quaternion());
-                    newSphere.GetComponent<MeshRenderer>().material = Resources.Load("Colors/Jaune", typeof(Material)) as Material;
-                    newSphere.name = "Sphere ajoutee " + (addedSpheres.Count + 1) + " (milieu)";
+                    newSphere.GetComponent<MeshRenderer>().material =
+                        Resources.Load("Colors/Jaune", typeof(Material)) as Material;
+                    newSphere.name = "Sphere ajoutee " + (_addedSpheres.Count + 1) + " (milieu)";
 
-                    addedSpheres.Add(newSphere);
+                    _addedSpheres.Add(newSphere);
 
                     Debug.Log("color = yellow");
                 }
@@ -252,51 +250,59 @@ public class LinearScript : MonoBehaviour {
             case Algorithm.Regression:
             case Algorithm.NoMatrixLibraryRegression:
 
-                point.y = (float)value;
+                point.y = (float) value;
 
                 newSphere = Instantiate(whiteSpheres[0], point, new Quaternion());
-                newSphere.GetComponent<MeshRenderer>().material = Resources.Load("Colors/Jaune", typeof(Material)) as Material;
-                newSphere.name = "Sphere ajoutee " + (addedSpheres.Count + 1);
+                newSphere.GetComponent<MeshRenderer>().material =
+                    Resources.Load("Colors/Jaune", typeof(Material)) as Material;
+                newSphere.name = "Sphere ajoutee " + (_addedSpheres.Count + 1);
 
-                addedSpheres.Add(newSphere);
+                _addedSpheres.Add(newSphere);
 
                 Debug.Log("y = " + point.y);
 
                 break;
+
+            default:
+                throw new ArgumentOutOfRangeException();
         }
+
+        Debug.Log("\n");
     }
 
-    private void addRandomSphere()
+    // Ajoute une sphère aléatoirement
+    private void AddRandomSphere()
     {
-        System.Random randomer = new System.Random();
+        Random randomer = new Random();
 
-        double randomX1 = randomer.NextDouble() + randomer.Next(-6, 11); // le plateau n'est pas pile au milieu
-        double randomX2 = randomer.NextDouble() + randomer.Next(-9, 8); // le plateau n'est pas pile au milieu
+        double randomX1 = randomer.NextDouble() + randomer.Next(-10, 10);
+        double randomX2 = randomer.NextDouble() + randomer.Next(-10, 10);
 
-        useResult(randomX1, randomX2);
+        UseResult(randomX1, randomX2);
     }
 
-    private void removeLastAddedSphere()
+    // Supprime la dernière sphère ajoutée
+    private void RemoveLastAddedSphere()
     {
-        if (addedSpheres.Count > 0)
+        if (_addedSpheres.Count <= 0) return;
+
+        Destroy(_addedSpheres[_addedSpheres.Count - 1].gameObject);
+        _addedSpheres.RemoveAt(_addedSpheres.Count - 1);
+    }
+
+    // Supprime toutes les sphères ajoutées
+    private void RemoveAllAddedSphere()
+    {
+        for (int i = _addedSpheres.Count - 1; i >= 0; i--)
         {
-            Destroy(addedSpheres[addedSpheres.Count - 1].gameObject);
-            addedSpheres.RemoveAt(addedSpheres.Count - 1);
+            Destroy(_addedSpheres[i].gameObject);
+            _addedSpheres.RemoveAt(i);
         }
     }
 
-    private void removeAllAddedSphere()
+    // Calcule la valeur des coordonnées avec les coefficients trouvés
+    private static double CalculateValue(double x1, double x2, double[] coefficients)
     {
-        for (int i = (addedSpheres.Count - 1); i >= 0 ; i--)
-        {
-            Destroy(addedSpheres[i].gameObject);
-            addedSpheres.RemoveAt(i);
-        }
+        return coefficients[0] * x1 + coefficients[1] * x2 + coefficients[2];
     }
-
-    private double calculateValue(double x1, double x2, double a, double b, double c)
-    {
-        return ((a * x1) + (b * x2) + c);
-    }
-
 }

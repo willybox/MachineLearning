@@ -1,10 +1,9 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class TestWrapperScript : MonoBehaviour
 {
     // Use this for initialization
-    void Start()
+    private void Start()
     {
         //Debug.Log();
     }
