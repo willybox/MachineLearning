@@ -26,7 +26,7 @@ public class LinearScript : MonoBehaviour
 
     // Variables des tailles
     private static uint _nbPoints;
-    private static int spheresAddedCounter = 0;
+    private static int spheresAddedCounter;
     private const uint NbInputs = 2;
     private const uint NbInputWithExpedient = NbInputs + 1; // nbInputs + le biais
 
@@ -34,12 +34,12 @@ public class LinearScript : MonoBehaviour
     private static double[] _coordinates;
     private static double[] _values;
 
-    // Variables des coefficients)
+    // Variable des coefficients)
     private double[] _resultedCoefficients;
 
 
     // Variables du menu
-    private readonly List<Transform> _addedSpheres = new List<Transform>();
+    private List<Transform> _addedSpheres = new List<Transform>();
 
     private string _inputX1 = "";
     private string _inputX2 = "";
@@ -48,7 +48,15 @@ public class LinearScript : MonoBehaviour
     // Lance le script
     private void Start()
     {
-        _nbPoints = (uint) (redSpheres.Length + blueSpheres.Length);
+        Calculate();
+
+        GC.Collect();
+    }
+
+
+    private void Calculate()
+    {
+        _nbPoints = (uint)(redSpheres.Length + blueSpheres.Length);
 
         _coordinates = new double[_nbPoints * NbInputs];
         _values = new double[_nbPoints];
@@ -93,9 +101,8 @@ public class LinearScript : MonoBehaviour
             default:
                 throw new ArgumentOutOfRangeException();
         }
-
-        GC.Collect();
     }
+
 
     // Récupère les données et initialise les coefficients
     private double[] InitializeLinearVariables()
@@ -157,6 +164,7 @@ public class LinearScript : MonoBehaviour
         }
     }
 
+
     // Affiche le menu de jeu
     private void OnGUI()
     {
@@ -168,7 +176,8 @@ public class LinearScript : MonoBehaviour
 
         GUI.enabled = true;
 
-        if (GUI.Button(new Rect(60, 90, 60, 20), "Calculer"))
+        if (GUI.Button(new Rect(60, 115, 60, 20), "Calculer"))
+        {
             if (!string.IsNullOrEmpty(_inputX1) && !string.IsNullOrEmpty(_inputX2))
             {
                 UseResult(Convert.ToDouble(_inputX1), Convert.ToDouble(_inputX2));
@@ -179,12 +188,116 @@ public class LinearScript : MonoBehaviour
                 Debug.Log("Les valeurs doivent etre des nombres !");
                 Debug.Log("\n");
             }
+        }
 
         if (GUI.Button(new Rect(200, 20, 240, 20), "Ajouter sphere aleatoire")) AddRandomSphere();
 
-        if (GUI.Button(new Rect(200, 45, 240, 20), "Supprimer derniere sphere ajoutee")) RemoveLastAddedSphere();
+        if (GUI.Button(new Rect(200, 40, 240, 20), "Ajouter sphere calculée")) AddCalculedSphere();
 
-        if (GUI.Button(new Rect(200, 65, 240, 20), "Supprimer toutes les spheres ajoutees")) RemoveAllAddedSphere();
+        if (GUI.Button(new Rect(200, 65, 240, 20), "Supprimer derniere sphere ajoutee")) RemoveLastAddedSphere();
+
+        if (GUI.Button(new Rect(200, 85, 240, 20), "Supprimer toutes les spheres ajoutees")) RemoveAllAddedSphere();
+
+        if (GUI.Button(new Rect(200, 115, 80, 20), "Recalculer"))
+        {
+            RecalculateWithAddedSpheres();
+        }
+    }
+
+    private void RecalculateWithAddedSpheres()
+    {
+        switch (LinearAlgorithm)
+        {
+            case Algorithm.Classification:
+
+                // Récupère les nouvelles sphères et les ajoute au tableau d'entrées
+                List<Transform> newRedSpheres = new List<Transform>();
+                List<Transform> newBlueSpheres = new List<Transform>();
+
+                for (int i = 0; i < _addedSpheres.Count; i++)
+                {
+                    if (_addedSpheres[i].position.y > 0)
+                    {
+                        newRedSpheres.Add(_addedSpheres[i]);
+                    }
+
+                    else
+                    {
+                        newBlueSpheres.Add(_addedSpheres[i]);
+                    }
+                }
+
+                Transform[] newRedSpheresArray = newRedSpheres.ToArray();
+                Transform[] newBlueSpheresArray = newBlueSpheres.ToArray();
+
+                Transform[] tempRedSpheres = new Transform[redSpheres.Length + newRedSpheresArray.Length];
+                Transform[] tempBlueSpheres = new Transform[blueSpheres.Length + newBlueSpheresArray.Length];
+
+                Array.ConstrainedCopy(redSpheres, 0, tempRedSpheres, 0, redSpheres.Length);
+                Array.ConstrainedCopy(newRedSpheresArray, 0, tempRedSpheres, redSpheres.Length, newRedSpheresArray.Length);
+
+                Array.ConstrainedCopy(blueSpheres, 0, tempBlueSpheres, 0, blueSpheres.Length);
+                Array.ConstrainedCopy(newBlueSpheresArray, 0, tempBlueSpheres, blueSpheres.Length, newBlueSpheresArray.Length);
+
+                redSpheres = tempRedSpheres;
+                blueSpheres = tempBlueSpheres;
+
+                // Réinitialise les hauteurs des sphères rouges et bleues
+                for (int i = 0; i < redSpheres.Length; i++)
+                {
+                    Vector3 positions = redSpheres[i].position;
+                    positions.y = 0;
+                    redSpheres[i].position = positions;
+                }
+
+                for (int i = 0; i < blueSpheres.Length; i++)
+                {
+                    Vector3 positions = blueSpheres[i].position;
+                    positions.y = 0;
+                    blueSpheres[i].position = positions;
+                }
+
+                break;
+
+            case Algorithm.Regression:
+            case Algorithm.NoMatrixLibraryRegression:
+
+                List<Transform> newSpheres = new List<Transform>();
+
+                for (int i = 0; i < _addedSpheres.Count; i++)
+                {
+                    newSpheres.Add(_addedSpheres[i]);
+                }
+
+                Transform[] newSpheresArray = newSpheres.ToArray();
+
+                Transform[] tempSpheres = new Transform[redSpheres.Length + newSpheresArray.Length];
+
+                Array.ConstrainedCopy(redSpheres, 0, tempSpheres, 0, redSpheres.Length);
+                Array.ConstrainedCopy(newSpheresArray, 0, tempSpheres, redSpheres.Length, newSpheresArray.Length);
+
+                redSpheres = tempSpheres;
+
+                break;
+        }
+
+        // Réinitialise les hauteurs des sphères blanches
+        for (int i = 0; i < whiteSpheres.Length; i++)
+        {
+            Vector3 positions = whiteSpheres[i].position;
+            positions.y = -1;
+            whiteSpheres[i].position = positions;
+        }
+
+        // Réinitialise la liste des sphères ajoutées
+        _addedSpheres = new List<Transform>();
+
+        _nbPoints = 0;
+        spheresAddedCounter = 0;
+
+        Calculate();
+
+        GC.Collect();
     }
 
     // Utilise les coefficients pour calculer le résultat de la fonction sur les coordonnées d'entrée selon l'algorithme utilisé
@@ -272,6 +385,12 @@ public class LinearScript : MonoBehaviour
 
     // Ajoute une sphère aléatoirement
     private void AddRandomSphere()
+    {
+        Debug.Log("En développement");
+    }
+
+    // Ajoute une sphère aléatoirement
+    private void AddCalculedSphere()
     {
         Random randomer = new Random();
 
